@@ -75,21 +75,21 @@ app.delete('/comments/:postId/:commentId', async (req, res) => {
 
     // Load the comment
     const comment = await client.query(q.Get(q.Ref(q.Collection('comments'), commentId)))
-    .catch(err => {
-        res.status(404)
-        res.json({message: "Comment not found"})
-        res.end()
-    })
-     
+        .catch(err => {
+            res.status(404)
+            res.json({ message: "Comment not found" })
+            res.end()
+        })
+
     // If it's for the specified post, delete it
-    if(comment.data.postId == postId) {
+    if (comment.data.postId == postId) {
         await client.query(q.Delete(comment.ref))
         res.status(204)
         res.end()
 
     } else {
         res.status(404)
-        res.json({message: "Comment not doesn't belong to this post"})
+        res.json({ message: "Comment not doesn't belong to this post" })
         res.end()
 
     }

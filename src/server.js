@@ -3,6 +3,31 @@ import cors from 'cors'
 import express from 'express'
 import faunadb, { query as q } from "faunadb"
 
+import jwt from 'express-jwt'
+import jwtAuthz from 'express-jwt-authz'
+import jwksRsa from 'jwks-rsa'
+
+if (!process.env.AUTH0_DOMAIN || !process.env.AUTH0_AUDIENCE) {
+    throw 'Make sure you have AUTH0_DOMAIN, and AUTH0_AUDIENCE in your .env file';
+}
+
+const checkJwt = jwt({
+    // Dynamically provide a signing key based on the [Key ID](https://tools.ietf.org/html/rfc7515#section-4.1.4) header parameter ("kid") and the signing keys provided by the JWKS endpoint.
+    secret: jwksRsa.expressJwtSecret({
+        cache: true,
+        rateLimit: true,
+        jwksRequestsPerMinute: 5,
+        jwksUri: `https://${process.env.AUTH0_DOMAIN}/.well-known/jwks.json`
+    }),
+
+    // Validate the audience and the issuer.
+    audience: process.env.AUTH0_AUDIENCE,
+    issuer: `https://${process.env.AUTH0_DOMAIN}/`,
+    algorithms: ['RS256']
+});
+
+const checkCanDelete = jwtAuthz(['delete:comment']);
+
 const app = express()
 app.use(cors())
 app.use(express.json());
@@ -66,7 +91,7 @@ app.post('/comments/:postId', async (req, res) => {
 
 })
 
-app.delete('/comments/:postId/:commentId', async (req, res) => {
+app.delete('/comments/:postId/:commentId', checkJwt, checkCanDelete, async (req, res) => {
 
     const { FAUNADB_SECRET: faunadb_secret } = process.env
     const client = new faunadb.Client({ secret: faunadb_secret })
